@@ -5,7 +5,8 @@ on:
     branches:
       - main
     paths:
-      - 'frontend/**'   # Solo se dispara si cambian archivos del frontend
+      - '**.tf'        # Se dispara si cambian archivos .tf
+      - 'terraform.tfvars'
   workflow_dispatch:    # Permite dispararlo manualmente
 
 jobs:
@@ -30,17 +31,13 @@ jobs:
           terraform_version: 1.14.2
 
       - name: Terraform Init
-        working-directory: ./frontend
         run: terraform init -input=false
 
       - name: Terraform Validate
-        working-directory: ./frontend
         run: terraform validate
 
       - name: Terraform Plan
-        working-directory: ./frontend
         run: terraform plan -out=tfplan -input=false
 
       - name: Terraform Apply
-        working-directory: ./frontend
         run: terraform apply -input=false -auto-approve tfplan
