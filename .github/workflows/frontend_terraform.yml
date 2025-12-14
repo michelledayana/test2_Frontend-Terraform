@@ -51,3 +51,4 @@ jobs:
       # 7. Aplicar Terraform (modifica la infraestructura existente)
       - name: Terraform Apply
         run: terraform apply -auto-approve
+        
