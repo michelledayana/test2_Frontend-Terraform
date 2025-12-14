@@ -27,8 +27,8 @@ data "aws_subnets" "default" {
 # 2. SECURITY GROUP
 # ================================
 resource "aws_security_group" "web_sg" {
-  name   = "frontend-sg"
-  vpc_id = data.aws_vpc.default.id
+  name_prefix = "frontend-sg-"
+  vpc_id      = data.aws_vpc.default.id
 
   ingress {
     from_port   = 80
@@ -57,13 +57,18 @@ resource "aws_security_group" "web_sg" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  tags = {
+    Owner   = "Heredia"
+    Project = "Distributed-Exam"
+  }
 }
 
 # ================================
 # 3. LOAD BALANCER
 # ================================
 resource "aws_lb" "frontend_alb" {
-  name               = "frontend-alb"
+  name_prefix        = "frontend-alb-"
   load_balancer_type = "application"
   internal           = false
   security_groups    = [aws_security_group.web_sg.id]
@@ -71,10 +76,10 @@ resource "aws_lb" "frontend_alb" {
 }
 
 resource "aws_lb_target_group" "frontend_tg" {
-  name     = "frontend-tg"
-  port     = 3001
-  protocol = "HTTP"
-  vpc_id   = data.aws_vpc.default.id
+  name_prefix = "frontend-tg-"
+  port        = 3001
+  protocol    = "HTTP"
+  vpc_id      = data.aws_vpc.default.id
 
   health_check {
     path                = "/"
@@ -131,12 +136,12 @@ EOF
 # 5. AUTO SCALING GROUP
 # ================================
 resource "aws_autoscaling_group" "frontend_asg" {
-  name                = "frontend-asg"
-  min_size            = 2
-  max_size            = 3
-  desired_capacity    = 2
-  vpc_zone_identifier = data.aws_subnets.default.ids
-  target_group_arns   = [aws_lb_target_group.frontend_tg.arn]
+  name_prefix          = "frontend-asg-"
+  min_size             = 2
+  max_size             = 3
+  desired_capacity     = 2
+  vpc_zone_identifier  = data.aws_subnets.default.ids
+  target_group_arns    = [aws_lb_target_group.frontend_tg.arn]
 
   launch_template {
     id      = aws_launch_template.frontend_lt.id
