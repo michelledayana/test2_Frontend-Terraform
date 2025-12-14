@@ -16,7 +16,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Configurar AWS CLI con las tres claves
+      # 2. Configurar AWS CLI
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -35,18 +35,21 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
-      # 5. Validar Terraform
-      - name: Terraform Validate
-        run: terraform validate
-
-      # 6. Importar recursos existentes
-      - name: Terraform Import Existing Resources
+      # 5. Importar recursos existentes
+      - name: Terraform Import
         run: |
           terraform import aws_security_group.frontend_sg ${{ secrets.SG_ID_EXISTENTE }}
           terraform import aws_lb.frontend_alb ${{ secrets.ALB_ARN_EXISTENTE }}
           terraform import aws_lb_target_group.frontend_tg ${{ secrets.TG_ARN_EXISTENTE }}
           terraform import aws_launch_template.frontend_lt ${{ secrets.LT_ID_EXISTENTE }}
           terraform import aws_autoscaling_group.frontend_asg ${{ secrets.ASG_NAME_EXISTENTE }}
+          terraform import aws_autoscaling_policy.frontend_cpu ${{ secrets.POLICY_CPU_ARN }}
+          terraform import aws_autoscaling_policy.frontend_memory ${{ secrets.POLICY_MEMORY_ARN }}
+          terraform import aws_autoscaling_policy.frontend_network ${{ secrets.POLICY_NETWORK_ARN }}
+
+      # 6. Validar Terraform
+      - name: Terraform Validate
+        run: terraform validate
 
       # 7. Aplicar Terraform
       - name: Terraform Apply
