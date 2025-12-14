@@ -27,8 +27,8 @@ data "aws_subnets" "default" {
 # 2. SECURITY GROUP
 # ================================
 resource "aws_security_group" "web_sg" {
-  name   = "frontend-sg"
-  vpc_id = data.aws_vpc.default.id
+  name_prefix = "frontend-sg-"   # <- evita duplicados
+  vpc_id      = data.aws_vpc.default.id
 
   ingress {
     from_port   = 80
@@ -63,7 +63,7 @@ resource "aws_security_group" "web_sg" {
 # 3. LOAD BALANCER
 # ================================
 resource "aws_lb" "frontend_alb" {
-  name               = "frontend-alb"
+  name               = "frontend-alb"   # nombre fijo, no name_prefix
   load_balancer_type = "application"
   internal           = false
   security_groups    = [aws_security_group.web_sg.id]
@@ -131,7 +131,7 @@ EOF
 # 5. AUTO SCALING GROUP
 # ================================
 resource "aws_autoscaling_group" "frontend_asg" {
-  name                = "frontend-asg"
+  name                = "frontend-asg"   # nombre fijo
   min_size            = 2
   max_size            = 3
   desired_capacity    = 2
@@ -140,7 +140,7 @@ resource "aws_autoscaling_group" "frontend_asg" {
 
   launch_template {
     id      = aws_launch_template.frontend_lt.id
-    version = "$Latest"
+    version = "$Latest"   # siempre usa la última versión del LT
   }
 
   tag {
