@@ -11,7 +11,7 @@ provider "aws" {
 }
 
 # ================================
-# 1. DATA (VPC y Subredes)
+# 1. DATA
 # ================================
 data "aws_vpc" "default" {
   default = true
@@ -25,29 +25,22 @@ data "aws_subnets" "default" {
 }
 
 # ================================
-# 2. RANDOM SUFFIX
-# ================================
-resource "random_id" "suffix" {
-  byte_length = 2
-}
-
-# ================================
-# 3. SECURITY GROUP
+# 2. SECURITY GROUP
 # ================================
 resource "aws_security_group" "frontend_sg" {
-  name   = "frontend-sg-${random_id.suffix.hex}"
+  name   = "frontend-sg"
   vpc_id = data.aws_vpc.default.id
 
   ingress {
-    from_port   = 80
-    to_port     = 80
+    from_port   = 3001
+    to_port     = 3001
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
-    from_port   = 3001
-    to_port     = 3001
+    from_port   = 80
+    to_port     = 80
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -68,10 +61,10 @@ resource "aws_security_group" "frontend_sg" {
 }
 
 # ================================
-# 4. LOAD BALANCER
+# 3. LOAD BALANCER
 # ================================
 resource "aws_lb" "frontend_alb" {
-  name               = "frontend-alb-${random_id.suffix.hex}"
+  name               = "frontend-alb"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.frontend_sg.id]
@@ -79,7 +72,7 @@ resource "aws_lb" "frontend_alb" {
 }
 
 resource "aws_lb_target_group" "frontend_tg" {
-  name     = "frontend-tg-${random_id.suffix.hex}"
+  name     = "frontend-tg"
   port     = 3001
   protocol = "HTTP"
   vpc_id   = data.aws_vpc.default.id
@@ -102,7 +95,7 @@ resource "aws_lb_listener" "frontend_listener" {
 }
 
 # ================================
-# 5. LAUNCH TEMPLATE
+# 4. LAUNCH TEMPLATE
 # ================================
 resource "aws_launch_template" "frontend_lt" {
   name_prefix   = "frontend-lt-"
@@ -124,7 +117,7 @@ systemctl enable docker
 systemctl start docker
 usermod -aG docker ec2-user
 
-# CloudWatch Agent (MEMORIA)
+# CloudWatch Agent
 yum install -y amazon-cloudwatch-agent
 
 cat <<CWCONFIG > /opt/aws/amazon-cloudwatch-agent/bin/config.json
@@ -150,16 +143,16 @@ CWCONFIG
 sleep 30
 
 docker pull dayanaheredia/frontend-hello-world:latest
-docker run -d --restart always -p 3001:80 dayanaheredia/frontend-hello-world:latest
+docker run -d --restart always -p 3001:3001 dayanaheredia/frontend-hello-world:latest
 EOF
   )
 }
 
 # ================================
-# 6. AUTO SCALING GROUP
+# 5. AUTO SCALING GROUP
 # ================================
 resource "aws_autoscaling_group" "frontend_asg" {
-  name                = "frontend-asg-${random_id.suffix.hex}"
+  name                = "frontend-asg"
   min_size            = 2
   max_size            = 3
   desired_capacity    = 2
@@ -179,7 +172,7 @@ resource "aws_autoscaling_group" "frontend_asg" {
 }
 
 # ================================
-# 7. SCALING POLICIES
+# 6. SCALING POLICIES
 # ================================
 resource "aws_autoscaling_policy" "frontend_cpu" {
   name                   = "frontend-scale-cpu"
