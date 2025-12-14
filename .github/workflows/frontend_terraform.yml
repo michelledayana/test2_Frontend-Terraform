@@ -1,54 +1,38 @@
-name: Deploy Infrastructure with Terraform
+name: Rebuild Infrastructure
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type YES to confirm destruction'
+        required: true
 
 jobs:
   terraform:
-    name: Terraform Plan and Apply
     runs-on: ubuntu-latest
-
     steps:
-      # 1. Checkout del código del repositorio
-      - name: Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      # 2. Configurar las credenciales de AWS
-      - name: Set up AWS credentials
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }} # Solo si usas roles temporales
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: us-east-1
 
-      # 3. Configurar Terraform
-      - name: Set up Terraform
+      - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.14.2
 
-      # 4. Inicializar Terraform
       - name: Terraform Init
         run: terraform init
 
-      # 5. Validar el código de Terraform (opcional)
-      - name: Terraform Validate
-        run: terraform validate
+      - name: Terraform Destroy
+        if: ${{ github.event.inputs.confirm == 'YES' }}
+        run: terraform destroy -auto-approve
 
-      # 6. Realizar el plan (sin cambios destructivos)
-      - name: Terraform Plan
-        run: terraform plan -out=tfplan -detailed-exitcode
-        continue-on-error: true  # No interrumpir si el plan contiene cambios
-
-      # 7. Aplicar los cambios solo si hay diferencias (no destruirá recursos)
       - name: Terraform Apply
-        if: success() && steps.terraform-plan.outputs.exitcode == 0
-        run: terraform apply -auto-approve tfplan
-
-      # 8. Salida final de estado
-      - name: Terraform Apply Complete
-        run: echo "Terraform Apply Complete"
+        run: terraform apply -auto-approve
