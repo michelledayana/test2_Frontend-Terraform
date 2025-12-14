@@ -25,13 +25,9 @@ data "aws_subnets" "default" {
 }
 
 # ================================
-# 2. RANDOM SUFFIX (para nombres únicos)
+# 2. RANDOM SUFFIX
 # ================================
-resource "random_id" "sg_suffix" {
-  byte_length = 2
-}
-
-resource "random_id" "tg_suffix" {
+resource "random_id" "suffix" {
   byte_length = 2
 }
 
@@ -39,7 +35,7 @@ resource "random_id" "tg_suffix" {
 # 3. SECURITY GROUP
 # ================================
 resource "aws_security_group" "frontend_sg" {
-  name   = "frontend-sg-${random_id.sg_suffix.hex}"
+  name   = "frontend-sg-${random_id.suffix.hex}"
   vpc_id = data.aws_vpc.default.id
 
   ingress {
@@ -75,7 +71,7 @@ resource "aws_security_group" "frontend_sg" {
 # 4. LOAD BALANCER
 # ================================
 resource "aws_lb" "frontend_alb" {
-  name               = "frontend-alb"
+  name               = "frontend-alb-${random_id.suffix.hex}"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.frontend_sg.id]
@@ -83,7 +79,7 @@ resource "aws_lb" "frontend_alb" {
 }
 
 resource "aws_lb_target_group" "frontend_tg" {
-  name     = "frontend-tg-${random_id.tg_suffix.hex}"
+  name     = "frontend-tg-${random_id.suffix.hex}"
   port     = 3001
   protocol = "HTTP"
   vpc_id   = data.aws_vpc.default.id
@@ -163,7 +159,7 @@ EOF
 # 6. AUTO SCALING GROUP
 # ================================
 resource "aws_autoscaling_group" "frontend_asg" {
-  name                = "frontend-asg"
+  name                = "frontend-asg-${random_id.suffix.hex}"
   min_size            = 2
   max_size            = 3
   desired_capacity    = 2
