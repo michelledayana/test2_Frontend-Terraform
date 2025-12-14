@@ -11,7 +11,7 @@ provider "aws" {
 }
 
 # ================================
-# 1. DATA (VPC y Subnets)
+# 1. DATA (VPC y Subredes)
 # ================================
 data "aws_vpc" "default" {
   default = true
@@ -25,21 +25,23 @@ data "aws_subnets" "default" {
 }
 
 # ================================
-# 2. SECURITY GROUP
+# 2. RANDOM SUFFIX (para nombres únicos)
+# ================================
+resource "random_id" "sg_suffix" {
+  byte_length = 2
+}
+
+resource "random_id" "tg_suffix" {
+  byte_length = 2
+}
+
+# ================================
+# 3. SECURITY GROUP
 # ================================
 resource "aws_security_group" "frontend_sg" {
-  name   = "frontend-sg"
+  name   = "frontend-sg-${random_id.sg_suffix.hex}"
   vpc_id = data.aws_vpc.default.id
 
-  # ALB → Frontend
-  ingress {
-    from_port   = 3001
-    to_port     = 3001
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # HTTP
   ingress {
     from_port   = 80
     to_port     = 80
@@ -47,7 +49,13 @@ resource "aws_security_group" "frontend_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # SSH
+  ingress {
+    from_port   = 3001
+    to_port     = 3001
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   ingress {
     from_port   = 22
     to_port     = 22
@@ -64,7 +72,7 @@ resource "aws_security_group" "frontend_sg" {
 }
 
 # ================================
-# 3. LOAD BALANCER
+# 4. LOAD BALANCER
 # ================================
 resource "aws_lb" "frontend_alb" {
   name               = "frontend-alb"
@@ -75,7 +83,7 @@ resource "aws_lb" "frontend_alb" {
 }
 
 resource "aws_lb_target_group" "frontend_tg" {
-  name     = "frontend-tg"
+  name     = "frontend-tg-${random_id.tg_suffix.hex}"
   port     = 3001
   protocol = "HTTP"
   vpc_id   = data.aws_vpc.default.id
@@ -98,11 +106,11 @@ resource "aws_lb_listener" "frontend_listener" {
 }
 
 # ================================
-# 4. LAUNCH TEMPLATE
+# 5. LAUNCH TEMPLATE
 # ================================
 resource "aws_launch_template" "frontend_lt" {
   name_prefix   = "frontend-lt-"
-  image_id      = "ami-0c02fb55956c7d316" # Amazon Linux 2
+  image_id      = "ami-0c02fb55956c7d316"
   instance_type = "t2.micro"
 
   network_interfaces {
@@ -146,13 +154,13 @@ CWCONFIG
 sleep 30
 
 docker pull dayanaheredia/frontend-hello-world:latest
-docker run -d --restart always -p 3001:3001 dayanaheredia/frontend-hello-world:latest
+docker run -d --restart always -p 3001:80 dayanaheredia/frontend-hello-world:latest
 EOF
   )
 }
 
 # ================================
-# 5. AUTO SCALING GROUP
+# 6. AUTO SCALING GROUP
 # ================================
 resource "aws_autoscaling_group" "frontend_asg" {
   name                = "frontend-asg"
@@ -175,9 +183,8 @@ resource "aws_autoscaling_group" "frontend_asg" {
 }
 
 # ================================
-# 6. SCALING POLICIES
+# 7. SCALING POLICIES
 # ================================
-# CPU > 50%
 resource "aws_autoscaling_policy" "frontend_cpu" {
   name                   = "frontend-scale-cpu"
   autoscaling_group_name = aws_autoscaling_group.frontend_asg.name
@@ -191,7 +198,6 @@ resource "aws_autoscaling_policy" "frontend_cpu" {
   }
 }
 
-# Network > 1MB
 resource "aws_autoscaling_policy" "frontend_network" {
   name                   = "frontend-scale-network"
   autoscaling_group_name = aws_autoscaling_group.frontend_asg.name
@@ -205,7 +211,6 @@ resource "aws_autoscaling_policy" "frontend_network" {
   }
 }
 
-# Memory > 60%
 resource "aws_autoscaling_policy" "frontend_memory" {
   name                   = "frontend-scale-memory"
   autoscaling_group_name = aws_autoscaling_group.frontend_asg.name
