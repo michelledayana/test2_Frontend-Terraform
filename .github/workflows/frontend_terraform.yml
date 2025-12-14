@@ -43,9 +43,9 @@ jobs:
           terraform import aws_lb_target_group.frontend_tg ${{ secrets.TG_ARN_EXISTENTE }}
           terraform import aws_launch_template.frontend_lt ${{ secrets.LT_ID_EXISTENTE }}
           terraform import aws_autoscaling_group.frontend_asg ${{ secrets.ASG_NAME_EXISTENTE }}
-          terraform import aws_autoscaling_policy.frontend_cpu ${{ secrets.POLICY_CPU_ARN }}
-          terraform import aws_autoscaling_policy.frontend_memory ${{ secrets.POLICY_MEMORY_ARN }}
-          terraform import aws_autoscaling_policy.frontend_network ${{ secrets.POLICY_NETWORK_ARN }}
+          terraform import aws_autoscaling_policy.frontend_cpu ${{ secrets.CPU_POLICY_ARN }}
+          terraform import aws_autoscaling_policy.frontend_memory ${{ secrets.MEMORY_POLICY_ARN }}
+          terraform import aws_autoscaling_policy.frontend_network ${{ secrets.NETWORK_POLICY_ARN }}
 
       # 6. Validar Terraform
       - name: Terraform Validate
