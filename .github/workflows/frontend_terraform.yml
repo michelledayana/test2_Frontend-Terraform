@@ -8,7 +8,7 @@ on:
 
 jobs:
   terraform:
-    name: Terraform Apply Frontend
+    name: Terraform Destroy and Apply
     runs-on: ubuntu-latest
 
     steps:
@@ -31,17 +31,18 @@ jobs:
         with:
           terraform_version: 1.14.2
 
-      # 4. Inicializar Terraform (si tu frontend está en una carpeta, agrega 'working-directory')
+      # 4. Inicializar Terraform
       - name: Terraform Init
         run: terraform init
-        # working-directory: ./frontend
 
       # 5. Validar Terraform
       - name: Terraform Validate
         run: terraform validate
-        # working-directory: ./frontend
 
-      # 6. Aplicar Terraform
+      # 6. Destruir los recursos existentes
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
+
+      # 7. Aplicar Terraform para crear los nuevos recursos
       - name: Terraform Apply
         run: terraform apply -auto-approve
-        # working-directory: ./frontend
