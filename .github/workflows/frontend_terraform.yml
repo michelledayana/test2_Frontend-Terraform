@@ -54,4 +54,3 @@ jobs:
       # 7. Aplicar Terraform
       - name: Terraform Apply
         run: terraform apply -auto-approve
-        
