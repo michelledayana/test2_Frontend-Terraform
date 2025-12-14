@@ -5,12 +5,13 @@ provider "aws" {
     tags = {
       Project = "Distributed-Exam"
       Owner   = "Heredia"
+      Service = "Frontend"
     }
   }
 }
 
 # ================================
-# 1. DATA (VPC y Subredes)
+# 1. DATA
 # ================================
 data "aws_vpc" "default" {
   default = true
@@ -24,78 +25,25 @@ data "aws_subnets" "default" {
 }
 
 # ================================
-# 2. SECURITY GROUP
+# 2. EXISTING SECURITY GROUP
 # ================================
-resource "aws_security_group" "web_sg" {
-  name   = "frontend-sg"
+data "aws_security_group" "web_sg" {
+  filter {
+    name   = "group-name"
+    values = ["frontend-sg"]
+  }
   vpc_id = data.aws_vpc.default.id
-
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 3001
-    to_port     = 3001
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
 }
 
 # ================================
-# 3. LOAD BALANCER
+# 3. EXISTING LOAD BALANCER
 # ================================
-resource "aws_lb" "frontend_alb" {
-  name               = "frontend-alb"
-  load_balancer_type = "application"
-  internal           = false
-  security_groups    = [aws_security_group.web_sg.id]
-  subnets            = data.aws_subnets.default.ids
+data "aws_lb" "frontend_alb" {
+  name = "frontend-alb"
 }
 
-resource "aws_lb_target_group" "frontend_tg" {
-  name     = "frontend-tg"
-  port     = 3001
-  protocol = "HTTP"
-  vpc_id   = data.aws_vpc.default.id
-
-  health_check {
-    path                = "/"
-    port                = "3001"
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
-    interval            = 30
-    timeout             = 5
-    matcher             = "200"
-  }
-}
-
-resource "aws_lb_listener" "frontend_listener" {
-  load_balancer_arn = aws_lb.frontend_alb.arn
-  port              = 80
-  protocol          = "HTTP"
-
-  default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.frontend_tg.arn
-  }
+data "aws_lb_target_group" "frontend_tg" {
+  name = "frontend-tg"
 }
 
 # ================================
@@ -109,7 +57,7 @@ resource "aws_launch_template" "frontend_lt" {
 
   network_interfaces {
     associate_public_ip_address = true
-    security_groups             = [aws_security_group.web_sg.id]
+    security_groups             = [data.aws_security_group.web_sg.id]
   }
 
   user_data = base64encode(<<EOF
@@ -128,15 +76,20 @@ EOF
 }
 
 # ================================
-# 5. AUTO SCALING GROUP
+# 5. EXISTING AUTO SCALING GROUP
 # ================================
-resource "aws_autoscaling_group" "frontend_asg" {
-  name                = "frontend-asg"
-  min_size            = 2
-  max_size            = 3
-  desired_capacity    = 2
+data "aws_autoscaling_group" "frontend_asg" {
+  name = "frontend-asg"
+}
+
+# Update the ASG with the new Launch Template
+resource "aws_autoscaling_group" "frontend_asg_update" {
+  name                = data.aws_autoscaling_group.frontend_asg.name
+  min_size            = data.aws_autoscaling_group.frontend_asg.min_size
+  max_size            = data.aws_autoscaling_group.frontend_asg.max_size
+  desired_capacity    = data.aws_autoscaling_group.frontend_asg.desired_capacity
   vpc_zone_identifier = data.aws_subnets.default.ids
-  target_group_arns   = [aws_lb_target_group.frontend_tg.arn]
+  target_group_arns   = [data.aws_lb_target_group.frontend_tg.arn]
 
   launch_template {
     id      = aws_launch_template.frontend_lt.id
@@ -154,8 +107,8 @@ resource "aws_autoscaling_group" "frontend_asg" {
 # 6. SCALING POLICIES
 # ================================
 resource "aws_autoscaling_policy" "cpu_policy" {
-  name                   = "scale-by-cpu"
-  autoscaling_group_name = aws_autoscaling_group.frontend_asg.name
+  name                   = "frontend-scale-cpu"
+  autoscaling_group_name = aws_autoscaling_group.frontend_asg_update.name
   policy_type            = "TargetTrackingScaling"
 
   target_tracking_configuration {
@@ -167,8 +120,8 @@ resource "aws_autoscaling_policy" "cpu_policy" {
 }
 
 resource "aws_autoscaling_policy" "network_policy" {
-  name                   = "scale-by-network"
-  autoscaling_group_name = aws_autoscaling_group.frontend_asg.name
+  name                   = "frontend-scale-network"
+  autoscaling_group_name = aws_autoscaling_group.frontend_asg_update.name
   policy_type            = "TargetTrackingScaling"
 
   target_tracking_configuration {
@@ -180,8 +133,8 @@ resource "aws_autoscaling_policy" "network_policy" {
 }
 
 resource "aws_autoscaling_policy" "memory_policy" {
-  name                   = "scale-by-memory"
-  autoscaling_group_name = aws_autoscaling_group.frontend_asg.name
+  name                   = "frontend-scale-memory"
+  autoscaling_group_name = aws_autoscaling_group.frontend_asg_update.name
   policy_type            = "TargetTrackingScaling"
 
   target_tracking_configuration {
@@ -193,7 +146,7 @@ resource "aws_autoscaling_policy" "memory_policy" {
 
       metric_dimension {
         name  = "AutoScalingGroupName"
-        value = aws_autoscaling_group.frontend_asg.name
+        value = aws_autoscaling_group.frontend_asg_update.name
       }
     }
     target_value = 60
