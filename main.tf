@@ -244,4 +244,3 @@ resource "aws_autoscaling_policy" "frontend_memory" {
     target_value = 60
   }
 }
-
