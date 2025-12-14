@@ -8,47 +8,41 @@ on:
 
 jobs:
   terraform:
-    name: Terraform Apply
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout del repositorio
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Configurar AWS CLI con las 3 claves
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: us-east-1
 
-      # 3. Configurar Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
           terraform_version: 1.14.2
 
-      # 4. Inicializar Terraform
       - name: Terraform Init
         run: terraform init
 
-      # 5. Validar Terraform
-      - name: Terraform Validate
-        run: terraform validate
-
-      # 6. Importar recursos existentes (si es necesario)
-      - name: Terraform Import Resources
+      - name: Terraform Import Existing Resources
         run: |
           terraform import aws_security_group.frontend_sg ${{ secrets.SG_ID_EXISTENTE }}
           terraform import aws_lb.frontend_alb ${{ secrets.ALB_ARN_EXISTENTE }}
           terraform import aws_lb_target_group.frontend_tg ${{ secrets.TG_ARN_EXISTENTE }}
           terraform import aws_launch_template.frontend_lt ${{ secrets.LT_ID_EXISTENTE }}
           terraform import aws_autoscaling_group.frontend_asg ${{ secrets.ASG_NAME_EXISTENTE }}
+          # Importar políticas si ya existen
+          terraform import aws_autoscaling_policy.frontend_cpu ${{ secrets.CPU_POLICY_ARN }}
+          terraform import aws_autoscaling_policy.frontend_memory ${{ secrets.MEMORY_POLICY_ARN }}
+          terraform import aws_autoscaling_policy.frontend_network ${{ secrets.NETWORK_POLICY_ARN }}
 
-      # 7. Aplicar Terraform (modifica la infraestructura existente)
+      - name: Terraform Validate
+        run: terraform validate
+
       - name: Terraform Apply
         run: terraform apply -auto-approve
-        
